@@ -1,0 +1,1 @@
+Código de estado: 200 OK Respuesta: Conexión exitosa con la API de Gemini para el Gate 1
