@@ -1,39 +1,46 @@
-import os
-from pathlib import Path
+# ============================================================================== 
+# main.py - Punto de entrada principal del proyecto 
+# Módulo 1  Unidad 1.3 - Integración con Groq API 
+# Alumno: Jose Carlos Rojas| Bootcamp IA Generativa - Accenture/SkillNest 
+# ============================================================================== 
 
-from dotenv import load_dotenv
-import google.generativeai as genai
+import sys 
+from pathlib import Path 
 
+# 1. Asegurar que la raíz del proyecto esté en el path de ejecución 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / ".env")
+BASE_DIR = Path(__file__).resolve().parent.parent 
+if str(BASE_DIR) not in sys.path:  
+    sys.path.insert(0, str(BASE_DIR)) 
 
-
-def get_api_key() -> str:
-    api_key = os.getenv("GEMINI_API_KEY") or os.getenv("API_KEY")
-    if not api_key or api_key.startswith("tu_"):
-        raise ValueError(
-            "No se encontró una API key válida. Configura GEMINI_API_KEY o API_KEY "
-            "en el archivo .env en la raíz del proyecto."
-        )
-    return api_key
-
+# 2. Importar la función orquestadora desde el módulo refactorizado 
+try: 
+ from src.consumir_groq import obtener_dato_de_prueba 
+except ImportError: 
+ from consumir_groq import obtener_dato_de_prueba 
 
 def main() -> None:
-    try:
-        api_key = get_api_key()
-        genai.configure(api_key=api_key)
+ """ 
+Punto de entrada principal del repositorio. 
+Utiliza el módulo consumir_groq para realizar la consulta inicial a la API. 
+""" 
+print("Iniciando aplicación principal con Groq API...\n") 
+pregunta = ( 
+"Confirma en una frase corta que la integración principal desde main.py funciona correctamente."
+ ) 
 
-        model = genai.GenerativeModel("gemini-3.8-flash")
-        response = model.generate_content(
-            "Responde con una frase breve confirmando que la autenticación con Gemini funciona."
-        )
+try: 
+        # Petición orquestada a través del módulo refactorizado   
+     respuesta = obtener_dato_de_prueba(pregunta) 
+     print("--- Respuesta de la API ---") 
+     print(respuesta) 
 
-        print(response.text)
-    except Exception as exc:
-        print(f"Error al autenticar con Gemini: {exc}")
-        raise
-
+except (ValueError, RuntimeError) as error: 
+    print(f"No se pudo completar la operación: {error}") 
+except Exception as exc: 
+    print(f"Ocurrió un error inesperado en main.py: {exc}") 
 
 if __name__ == "__main__":
-    main()
+   main() 
+
+   
