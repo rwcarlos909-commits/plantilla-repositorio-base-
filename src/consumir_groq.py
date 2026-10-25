@@ -120,12 +120,25 @@ def extraer_texto(datos: dict) -> str:
             "El modelo devolvió una respuesta vacía."
         )
     return texto
+
 # ─────────────────────────────────────────────────────────────
-# FUNCION 4: obtener_dato_de_prueba(pregunta)
+#   FUNCION: 4 calcular_costo(datos, precio_entrada, precio_salida)
+# ─────────────────────────────────────────────────────────────
+
+
+def calcular_costo(datos: dict, precio_entrada: float, precio_salida: float) -> float:
+    uso = datos["usage"]
+    tokens_entrada = uso["prompt_tokens"]
+    tokens_salida = uso["completion_tokens"]
+    return tokens_entrada * precio_entrada + tokens_salida * precio_salida
+
+# ─────────────────────────────────────────────────────────────
+# FUNCION 5: obtener_dato_de_prueba(pregunta)
 #   - Responsabilidad única:
 #   - Orquestar las tres funciones anteriores para obtener el dato de prueba
-#   - Cda funcion maneja un error 
+#   - Cda funcion maneja un error
 # ─────────────────────────────────────────────────────────────
+
 
 def obtener_dato_de_prueba(pregunta: str) -> str:
 
@@ -154,4 +167,3 @@ if __name__ == "__main__":
         # Capturamos solo los errores que nosotros mismos lanzamos
         # (ValueError de validación, RuntimeError de comunicación)
         print(f"No se pudo completar la operación: {error}")
-
