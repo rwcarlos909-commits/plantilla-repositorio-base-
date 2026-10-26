@@ -2,7 +2,8 @@
 # Módulo de consumo del servicio Groq - Bloque 7 (versión completa)
 # Alumno: Carlos | Bootcamp IA Generativa - Accenture/SkillNest
 
-
+import json
+import re
 import os
 from pathlib import Path
 
@@ -27,7 +28,8 @@ load_dotenv(BASE_DIR / ".env")
 #   - Obtener y validar la API key del archivo .env
 #   - Preparar la URL, headers y body para la petición
 # ─────────────────────────────────────────────────────────────
-def armar_peticion(pregunta: str) -> tuple:
+def armar_peticion(pregunta: str, system_instruction: str = "Eres un asistente útil y conciso.", forzar_json: bool = False):
+
     # VALIDACIÓN DE ENTRADA
     # Si la pregunta llega vacía o solo con espacios, detenemos
     # el proceso aquí, antes de hacer cualquier llamada a la API
@@ -52,10 +54,44 @@ def armar_peticion(pregunta: str) -> tuple:
     }
     body = {
         "model": modelo,
-        "messages": [{"role": "user", "content": pregunta.strip()}],
+        "messages": [
+            {"role": "user", "content": pregunta.strip()
+             },
+            {"role": "system", "content": system_instruction
+             }
+        ]
     }
 
+    if forzar_json:
+        body["response_format"] = {"type": "json_object"}
+
     return url, headers, body
+
+
+def parsear_respuesta_json(texto: str, claves_esperadas: list = None) -> dict:
+    if not texto:
+        raise ValueError("El texto a parsear está vacío.")
+
+    # 1. Limpiar marcas ```json de markdown
+    texto_limpio = texto.strip()
+    texto_limpio = re.sub(r"^```(?:json)?\s*", "", texto_limpio)
+    texto_limpio = re.sub(r"\s*```$", "", texto_limpio)
+
+    # 2. Convertir a diccionario Python
+    try:
+        datos = json.loads(texto_limpio)
+    except json.JSONDecodeError as error:
+        raise ValueError("La respuesta del modelo no es un JSON válido.") from error
+
+    # 3. Validar claves requeridas
+    if claves_esperadas:
+        for clave in claves_esperadas:
+            if clave not in datos:
+                raise ValueError(
+                    f"Falta la clave requerida '{clave}' en la respuesta."
+                )
+
+    return datos
 
 
 # ─────────────────────────────────────────────────────────────
@@ -156,14 +192,45 @@ def obtener_dato_de_prueba(pregunta: str) -> str:
 # directamente: python src/consumir_groq.py
 # NO se ejecuta cuando otro módulo importa estas funciones
 # ─────────────────────────────────────────────────────────────
-if __name__ == "__main__":
-    try:
-        resultado = obtener_dato_de_prueba(
-            "Confirma en una frase corta que esta conexión funciona correctamente."
-        )
-        print(resultado)
 
-    except (ValueError, RuntimeError) as error:
-        # Capturamos solo los errores que nosotros mismos lanzamos
-        # (ValueError de validación, RuntimeError de comunicación)
-        print(f"No se pudo completar la operación: {error}")
+if __name__ == "__main__":
+    print("==================================================")
+    print(" PROBANDO SYSTEM PROMPT Y FORZADO JSON")
+    print("==================================================")
+
+    system_prompt = ("Eres un asistente técnico de la Región de Valparaíso. "
+                     "Responde ÚNICAMENTE en formato JSON válido con las llaves "
+                     "'estado', 'mensaje' y 'region'."
+                     )
+    pregunta_usuario = "Confirma en una frase corta que la conexión funciona."
+
+    try:
+        # 1. Armamos la petición forzando JSON y con system prompt
+        url, headers, body = armar_peticion(
+            pregunta=pregunta_usuario,
+            system_instruction=system_prompt, forzar_json=True
+        )
+
+        # 2. Enviamos la petición
+        respuesta = requests.post(url, headers=headers, json=body)
+        respuesta.raise_for_status()
+
+        datos_raw = respuesta.json()
+        texto_raw = datos_raw["choices"][0]["message"]["content"]
+
+        print("\n--- Respuesta Raw (Texto recibido de Groq) ---")
+        print(texto_raw)
+
+        # 3. Parseamos y validamos las llaves obligatorias
+        dict_validado = parsear_respuesta_json(
+            text_raw,
+            clave_esperadas=["estado", "mensaje", "region"]
+        )
+
+        print("\n--- JSON Parseado y Validado con Éxito ---")
+        print(f"Estado: {dict_validado.get('estado')}")
+        print(f"Mensaje: {dict_validado.get('mensaje')}")
+        print(f"Región: {dict_validado.get('region')}")
+
+    except Exception as error:
+        print(f"\nOcurrió un error en la prueba: {error}")
