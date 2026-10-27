@@ -25,3 +25,23 @@ Estos pasos se completan de forma progresiva a lo largo de la Unidad U1.2, no to
 - Ningún secreto (contraseña, llave de API, token) va escrito directamente en el código ni en ningún archivo que se suba al repositorio.
 - Cada proyecto nuevo tiene su propio entorno virtual: no se comparten dependencias entre proyectos distintos.
 - Todo el trabajo que se entrega en este programa vive en un repositorio de GitHub, sin excepción.
+
+
+# Miniaplicación IA - Asistente de Orientación Técnica (Región de Valparaíso) 
+
+Este repositorio contiene la solución desarrollada para el **Gate 1: Habilitación Técnica** del Programa de Especialización en Inteligencia Artificial (Skillnest). 
+
+--- 
+
+# Descripción del Proyecto 
+La aplicación es un asistente técnico especializado en la Región de Valparaíso, diseñado para orientar a jóvenes y personas de zonas rurales e interiores (San Felipe, Los Andes, Petorca, La Ligua, Olmué) sobre cursos técnicos presenciales, talleres de oficios y formación local. 
+--- 
+
+# Requisitos Previos 
+- **Python 3.10+** - **Git** - Una **API Key de Groq** válida 
+
+--- 
+
+# Guía de Instalación y Configuración Paso a Paso
+
+ Sigue estos pasos en tu terminal para clonar, instalar y ejecutar la aplicación desde cero: ### 1. Clonar el repositorio ```bash git clone https://github.com/rwcarlos909-commits/plantilla-repositorio-base-.git cd plantilla-repositorio-base-
