@@ -1,17 +1,22 @@
 # ==============================================================================
-# BLOQUE 19: ENRUTAMIENTO CONDICIONAL MODULAR (DOMINIO DEL PROYECTO)
+# BLOQUE 20 - HOJA 1 Y 3: MANEJO DE ERRORES Y FALLBACKS EN ENRUTAMIENTO
 # ==============================================================================
 
 from langchain_groq import ChatGroq
-from langchain_core.runnables import RunnableBranch, RunnablePassthrough
+from langchain_core.runnables import RunnableBranch, RunnablePassthrough, RunnableLambda
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.prompts import PromptTemplate
+import logging
 from dotenv import load_dotenv
 load_dotenv()
 
 
+# Configuración formal del logger del sistema
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # ------------------------------------------------------------------------------
-# 1. Modelo de Lenguaje
+# 1. Modelo de Lenguaje Principal
 # ------------------------------------------------------------------------------
 
 modelo = ChatGroq(
@@ -20,7 +25,7 @@ modelo = ChatGroq(
 )
 
 # ------------------------------------------------------------------------------
-# 2. Clasificación
+# 2. Paso de Clasificación de la Entrada
 # ------------------------------------------------------------------------------
 
 plantilla_clasificacion = PromptTemplate.from_template(
@@ -38,14 +43,14 @@ def construir_paso_clasificacion(modelo_llm):
     )
 
 # ------------------------------------------------------------------------------
-# 3. Rutas de Destino
+# 3. Rutas de Destino Específicas
 # ------------------------------------------------------------------------------
 
 
 cadena_pregunta = (
     PromptTemplate.from_template(
         "Responde a esta pregunta técnica sobre mallas curriculares o demanda laboral "
-        "con precisión y claridad:\n\n{mensaje}"
+        "con precisión:\n\n{mensaje}"
     )
     | modelo
     | StrOutputParser()
@@ -70,19 +75,46 @@ cadena_sugerencia = (
 )
 
 # ------------------------------------------------------------------------------
-# 4. Factoría de la Cadena
+# 4. Fallback y Protección Específica para Quejas (Plan B)
+# ------------------------------------------------------------------------------
+
+respuesta_generica = RunnableLambda(
+    lambda x: (
+        "Gracias por contactar al equipo de soporte del sistema de mallas curriculares. "
+        "Hemos recibido tu reporte sobre la plataforma y un especialista lo revisará a la brevedad."
+    )
+)
+
+
+def construir_cadena_queja_segura(cadena_queja_base):
+    """Enuelve la cadena de queja con un fallback en caso de error de red o API."""
+    return cadena_queja_base.with_fallbacks([respuesta_generica])
+
+
+cadena_queja_protegida = construir_cadena_queja_segura(cadena_queja)
+
+# ------------------------------------------------------------------------------
+# 5. Factoría de Enrutamiento
 # ------------------------------------------------------------------------------
 
 
-def construir_cadena_con_enrutamiento(paso_clasificacion, cadena_queja=None, cadena_sugerencia=None, cadena_pregunta=None, ):
+def construir_cadena_con_enrutamiento(
+    paso_clasificacion,
+    cadena_queja=None,
+    cadena_sugerencia=None,
+    cadena_pregunta=None,
+):
+    """Construye la cadena con enrutamiento inyectando las rutas o Mocks."""
+    # 1. Aseguramos que ninguna ruta quede en None
     cadena_queja = cadena_queja or RunnablePassthrough()
     cadena_sugerencia = cadena_sugerencia or RunnablePassthrough()
     cadena_pregunta = cadena_pregunta or RunnablePassthrough()
 
+    # 2. Definimos la bifurcación
     bifurcacion = RunnableBranch(
         (lambda x: x["categoria"] == "queja", cadena_queja),
         (lambda x: x["categoria"] == "sugerencia", cadena_sugerencia),
-        cadena_pregunta,  # Ruta por defecto ante preguntas o casos no reconocidos
+        cadena_pregunta
     )
 
     return (
@@ -94,29 +126,38 @@ def construir_cadena_con_enrutamiento(paso_clasificacion, cadena_queja=None, cad
 paso_clasificacion = construir_paso_clasificacion(modelo)
 cadena_con_enrutamiento = construir_cadena_con_enrutamiento(
     paso_clasificacion=paso_clasificacion,
-    cadena_queja=cadena_queja,
+    cadena_queja=cadena_queja_protegida,
     cadena_sugerencia=cadena_sugerencia,
     cadena_pregunta=cadena_pregunta,
 )
 
 # ------------------------------------------------------------------------------
-# 5. Ejecución con ejemplos del proyecto miniapp servicio orientacion ciudadana zonas rurales
+# 6. Función de Entrada Segura con try/except General y Logger
 # ------------------------------------------------------------------------------
 
+
+def procesar_mensaje_seguro(cadena, mensaje):
+    """Invoca la cadena de forma segura; ante cualquier fallo no capturado, registra el log y responde."""
+    try:
+        return cadena.invoke({"mensaje": mensaje})
+    except Exception as error:
+        logger.error(f"Error procesando mensaje en la cadena: {error}")
+        return (
+            "No pudimos procesar tu consulta sobre la plataforma en este momento. "
+            "Por favor, intenta nuevamente en unos minutos."
+        )
+
+
+# ------------------------------------------------------------------------------
+# 7. Prueba de ejecución en consola
+# ------------------------------------------------------------------------------
 if __name__ == "__main__":
     print("------------------------------------------------------------------")
-    print(" EJECUTANDO PRUEBAS DE ENRUTAMIENTO CON CASOS DEL PROYECTO")
-    print("------------------------------------------------------------------\\n")
-
-    mensajes_proyecto = [
-        ("PREGUNTA TÉCNICA",
-         "¿Cómo se vincula la malla del liceo técnico con la demanda laboral comunal?"),
-        ("QUEJA", "Los datos demográficos de la comuna no cargan y la vista se queda congelada."),
-        ("SUGERENCIA", "Sería útil poder filtrar la oferta formativa por localidad rural.")
-    ]
-
-    for tipo, msg in mensajes_proyecto:
-        print(f"📌 [{tipo}]: '{msg}'")
-        res = cadena_con_enrutamiento.invoke({"mensaje": msg})
-        print(f"👉 RESPUESTA:\n{res}\n")
-        print("-" * 66)
+    print(" EJECUTANDO CADENA CON ENRUTAMIENTO Y MANEJO DE ERRORES")
+    print("------------------------------------------------------------------\n")
+    mensaje_queja = "Los datos demográficos de la comuna no cargan y la vista se queda congelada."
+    print(f"📩 Mensaje recibido: '{mensaje_queja}'")
+    print("⏳ Procesando a través de la función segura...\n")
+    resultado = procesar_mensaje_seguro(cadena_con_enrutamiento, mensaje_queja)
+    print("✅ RESPUESTA GENERADA:")
+    print(resultado)
