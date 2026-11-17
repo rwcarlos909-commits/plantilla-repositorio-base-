@@ -1,0 +1,1 @@
+{"timestamp": "2026-11-17T17:28:03.957241+00:00", "pregunta": "¿Cuál es la política de reintentos ante un TimeoutError?", "k": 3, "desglose_tiempos_ms": {"busqueda_vectorial_ms": 6679.61, "generacion_llm_ms": 1490.36}, "tiempo_total_ms": 8169.97, "tokens": {"input_tokens": 281, "output_tokens": 109, "total_tokens": 390, "output_token_details": {"reasoning": 68}}}
